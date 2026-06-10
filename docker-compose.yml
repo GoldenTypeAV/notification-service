@@ -30,7 +30,7 @@ services:
       mode: replicated
       replicas: 0
     environment:
-      - WORKER_TOPIC=notifications.high
+      - WORKER_TOPICS='["notifications.high"]'
     env_file:
       - .env
     depends_on:

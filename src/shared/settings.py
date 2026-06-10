@@ -49,6 +49,9 @@ class RedisSettings(BaseSettings):
     url: RedisDsn = "redis://localhost:6379/0"
     max_connections: int = 10
 
+    host: str = "localhost"
+    port: int = 6379
+
     @model_validator(mode="before")
     @classmethod
     def assemble_url(cls, data: Any) -> Any:
@@ -79,6 +82,8 @@ class KafkaSettings(BaseSettings):
 class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
+
+    worker_topics: list[str]
 
     env: str = "development"
     debug: bool = False
