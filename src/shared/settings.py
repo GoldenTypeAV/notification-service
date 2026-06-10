@@ -79,6 +79,17 @@ class KafkaSettings(BaseSettings):
     group_id: str = "my-group"
     auto_offset_reset: str = "earliest"
 
+class EmailProviderSettings(BaseSettings):
+    provider: str = "smtp"
+    host: str = "mailhog"
+    port: int = 1025
+    use_tls: bool = False
+    from_email: str = "noreply@example.com"
+
+class SMSProviderSettings(BaseSettings):
+    provider: str = "mock"
+    api_key: str = ""
+
 class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
@@ -91,6 +102,8 @@ class Settings(BaseSettings):
     db: DatabaseSettings = DatabaseSettings()
     redis: RedisSettings = RedisSettings()
     kafka: KafkaSettings = KafkaSettings()
+    email: EmailProviderSettings = EmailProviderSettings()
+    sms: SMSProviderSettings = SMSProviderSettings()
     
     model_config = SettingsConfigDict(
         env_file=".env",
