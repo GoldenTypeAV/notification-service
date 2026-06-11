@@ -5,9 +5,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class DatabaseSettings(BaseSettings):
-    """Настройки базы данных, которые будут вложены в основной класс."""
     dsn: PostgresDsn | None = Field(default=None, validation_alias="dsn")
-    
+
     user: str = "postgres"
     password: str = "postgres"
     host: str = "localhost"
@@ -31,7 +30,7 @@ class DatabaseSettings(BaseSettings):
         password = data.get("password", "postgres")
         host = data.get("host", "localhost")
         port = data.get("port", 5432)
-        db = data.get("db", "my_database")
+        db = data.get("db", "notifications")
 
         dsn = MultiHostUrl.build(
             scheme="postgresql+asyncpg",
@@ -41,9 +40,10 @@ class DatabaseSettings(BaseSettings):
             port=int(port),
             path=db,
         )
-        
+
         data["dsn"] = dsn
         return data
+
 
 class RedisSettings(BaseSettings):
     url: RedisDsn = "redis://localhost:6379/0"
@@ -70,14 +70,22 @@ class RedisSettings(BaseSettings):
             port=int(port),
             path="0",
         )
-        
+
         data["url"] = dsn
         return data
+
 
 class KafkaSettings(BaseSettings):
     bootstrap_servers: str = "localhost:9092"
     group_id: str = "my-group"
     auto_offset_reset: str = "earliest"
+
+    high_priority_topic: str = "notifications.high"
+    normal_priority_topic: str = "notifications.normal"
+
+    acks: str = "all"
+    enable_idempotence: bool = True
+
 
 class EmailProviderSettings(BaseSettings):
     provider: str = "smtp"
@@ -86,15 +94,33 @@ class EmailProviderSettings(BaseSettings):
     use_tls: bool = False
     from_email: str = "noreply@example.com"
 
+
 class SMSProviderSettings(BaseSettings):
     provider: str = "mock"
     api_key: str = ""
+
+
+class RetrySettings(BaseSettings):
+    max_attempts: int = 3
+    delays: list[int] = [5, 30, 120]  # seconds
+    scheduler_interval_sec: int = 10
+    scheduler_batch_size: int = 50
+    run_scheduler: bool = True
+    # Через сколько секунд QUEUED-запись считается застрявшей и переотправляется.
+    stuck_after_sec: int = 60
+
+
+class DedupSettings(BaseSettings):
+    idempotency_ttl_sec: int = 24 * 60 * 60
+    processing_lock_ttl_sec: int = 60
+    history_cache_ttl_sec: int = 30
+
 
 class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
 
-    worker_topics: list[str]
+    worker_topic: str = "notifications.normal"
 
     env: str = "development"
     debug: bool = False
@@ -104,11 +130,19 @@ class Settings(BaseSettings):
     kafka: KafkaSettings = KafkaSettings()
     email: EmailProviderSettings = EmailProviderSettings()
     sms: SMSProviderSettings = SMSProviderSettings()
-    
+    retry: RetrySettings = RetrySettings()
+    dedup: DedupSettings = DedupSettings()
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_nested_delimiter="__",
         extra="ignore"
     )
+
+    def topic_for_priority(self, priority: str) -> str:
+        if str(priority) == "high":
+            return self.kafka.high_priority_topic
+        return self.kafka.normal_priority_topic
+
 
 settings = Settings()
